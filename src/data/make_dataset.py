@@ -28,12 +28,16 @@ def process_movement_data(filepaths):
     result_stat = pd.DataFrame()
 
     for filepath in filepaths:
-        df = pd.read_csv(filepath).describe().transpose().stack().to_frame().T
+        df = pd.read_csv(filepath)
 
-        # Extract IDs from the file path
+        df.drop(columns=['time'], inplace=True)
+        
+        df = df.describe().transpose().drop(columns=['count'])
+        
+        df = df.stack().to_frame().T
+        
         ids = extract_ids(filepath)
-
-        # Add 'IDs' column to the DataFrame
+        
         df['ID'] = ids
 
         result_stat = pd.concat([result_stat, df], axis=0)
