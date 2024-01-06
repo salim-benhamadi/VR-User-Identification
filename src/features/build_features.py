@@ -22,8 +22,8 @@ def extract_ids(filepath):
         if 'group' in part and 'order' in part and 'user' in part:
             return part
 
-def process_movement_data(filepaths):
-    """Process movement data and return a DataFrame with statistics."""
+def process_data(filepaths):
+    """Process vr data and return a DataFrame with statistics."""
     result_stat = pd.DataFrame()
 
     for filepath in filepaths:
@@ -55,7 +55,7 @@ def process_movement_data(filepaths):
 def main(input_filepath, output_filepath):
     """Runs data processing scripts to turn raw data into cleaned data."""
     logger = logging.getLogger(__name__)
-    logger.info('Making final data set from raw data')
+    logger.info('Making final dataset from raw data')
 
     # Get all files related to the participants' data
     all_files = get_all_files(input_filepath)
@@ -65,12 +65,19 @@ def main(input_filepath, output_filepath):
     movement_data = [x for x in all_files if '_movement.csv' in x]
 
     # Process movement data
-    movement_fast_stat = process_movement_data([filepath for filepath in movement_data if 'fast' in filepath])
-    movement_slow_stat = process_movement_data([filepath for filepath in movement_data if 'slow' in filepath])
+    movement_fast_stat = process_data([filepath for filepath in movement_data if 'fast' in filepath])
+    movement_slow_stat = process_data([filepath for filepath in movement_data if 'slow' in filepath])
+
+    # Process traffic data
+    traffic_fast_stat = process_data([filepath for filepath in traffic_data if 'fast' in filepath])
+    traffic_slow_stat = process_data([filepath for filepath in traffic_data if 'slow' in filepath])
 
     # Save the resulting dataframes
     movement_fast_stat.to_csv(output_filepath + 'movement_fast_stat.csv', index=False)
     movement_slow_stat.to_csv(output_filepath + 'movement_slow_stat.csv', index=False)
+    traffic_fast_stat.to_csv(output_filepath + 'traffic_fast_stat.csv', index=False)
+    traffic_slow_stat.to_csv(output_filepath + 'traffic_slow_stat.csv', index=False)
+
 
     logger.info('Save processed data')
 
