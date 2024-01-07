@@ -22,37 +22,55 @@ def extract_ids(filepath):
         if 'group' in part and 'order' in part and 'user' in part:
             return part
 
-def process_data(filepaths):
-    """Process vr data and return a DataFrame with statistics."""
+import pandas as pd
+
+def process_data(filepaths, time_window):
+    """Process CSV data and return a DataFrame with statistics for each minute within the specified time window."""
     result_stat = pd.DataFrame()
 
     for filepath in filepaths:
         df = pd.read_csv(filepath)
 
-        df.drop(columns=['time'], inplace=True)
-        
-        df = df.describe().transpose().drop(columns=['count'])
-        
-        df = df.stack().to_frame().T
-        
-        ids = extract_ids(filepath)
-        
-        df['ID'] = ids
+        # Convert 'time' from seconds to minutes and filter based on time_window
+        df['time'] = (df['time'] / 60).astype(int)
+        df = df[df['time'] < time_window]
 
-        result_stat = pd.concat([result_stat, df], axis=0)
+        # Initialize a DataFrame to store minute-wise statistics
+        minute_stats = pd.DataFrame()
+
+        for minute in range(time_window):
+            # Filter data for the current minute
+            minute_df = df[df['time'] == minute].drop(columns=['time'])
+            # Compute statistics for the current minute
+            stats = minute_df.describe().transpose().drop(columns=['count'])
+            stats = stats.stack().to_frame().T
+
+            # Add a column for the minute and ID
+            ids = extract_ids(filepath)  # Assuming extract_ids function exists
+            stats['minute'] = minute
+            stats['ID'] = ids
+
+            # Append the stats of the current minute
+            minute_stats = pd.concat([minute_stats, stats], axis=0)
+
+        # Concatenate the statistics of the current file to the final result
+        result_stat = pd.concat([result_stat, minute_stats], axis=0)
 
     # Rename columns with the corresponding statistic and file index
-    result_stat.columns = [f'{col}_{stat}' for idx, (col, stat) in enumerate(result_stat.columns)]
+    new_columns = [f'{col}_{stat}' if col not in ['minute', 'ID'] else col for col, stat in result_stat.columns]
+    result_stat.columns = new_columns
 
     result_stat.reset_index(drop=True, inplace=True)
     return result_stat
 
 
 
+
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('output_filepath', type=click.Path())
-def main(input_filepath, output_filepath):
+@click.argument('time_window', type=int)
+def main(input_filepath, output_filepath, time_window = 10):
     """Runs data processing scripts to turn raw data into cleaned data."""
     logger = logging.getLogger(__name__)
     logger.info('Making final dataset from raw data')
@@ -65,12 +83,12 @@ def main(input_filepath, output_filepath):
     movement_data = [x for x in all_files if '_movement.csv' in x]
 
     # Process movement data
-    movement_fast_stat = process_data([filepath for filepath in movement_data if 'fast' in filepath])
-    movement_slow_stat = process_data([filepath for filepath in movement_data if 'slow' in filepath])
+    movement_fast_stat = process_data([filepath for filepath in movement_data if 'fast' in filepath],time_window)
+    movement_slow_stat = process_data([filepath for filepath in movement_data if 'slow' in filepath], time_window)
 
     # Process traffic data
-    traffic_fast_stat = process_data([filepath for filepath in traffic_data if 'fast' in filepath])
-    traffic_slow_stat = process_data([filepath for filepath in traffic_data if 'slow' in filepath])
+    traffic_fast_stat = process_data([filepath for filepath in traffic_data if 'fast' in filepath], time_window)
+    traffic_slow_stat = process_data([filepath for filepath in traffic_data if 'slow' in filepath], time_window)
 
     # Save the resulting dataframes
     movement_fast_stat.to_csv(output_filepath + 'movement_fast_stat.csv', index=False)
