@@ -5,7 +5,7 @@ A Comparative Study of Virtual Motion and Network Traffic Data for Predicting Us
 
 ## Project Organization
 ------------
-
+```
 ├── LICENSE
 ├── Makefile           <- Makefile with commands like `make data` or `make train`
 ├── README.md          <- The top-level README for developers using this project.
@@ -44,7 +44,7 @@ A Comparative Study of Virtual Motion and Network Traffic Data for Predicting Us
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
-
+```
 --------
 
 ## Running the Project
