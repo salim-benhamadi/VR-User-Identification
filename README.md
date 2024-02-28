@@ -52,6 +52,6 @@ A Comparative Study of Virtual Motion and Network Traffic Data for Predicting Us
 To generate statistical features from the VR raw data, including movement and traffic data, execute the following command. This process will compute various statistical measures such as minimum (min), maximum (max), standard deviation (std), 25th percentile, 50th percentile, 75th percentile, and mean.
 
 ```python
-python ./src/features/build_features.py ./data/raw/Raw_traffic_and_movement_data/ ./data/processed/
+python ./src/features/build_features.py ./data/raw/Raw_traffic_and_movement_data/ ./data/processed/ 1
 ```
 

@@ -22,47 +22,50 @@ def extract_ids(filepath):
         if 'group' in part and 'order' in part and 'user' in part:
             return part
 
-import pandas as pd
-
 def process_data(filepaths, time_window):
-    """Process CSV data and return a DataFrame with statistics for each minute within the specified time window."""
+    """Process CSV data and return a DataFrame with statistics for each 10-second window within the specified time window in minutes."""
     result_stat = pd.DataFrame()
 
     for filepath in filepaths:
         df = pd.read_csv(filepath)
 
-        # Convert 'time' from seconds to minutes and filter based on time_window
-        df['time'] = (df['time'] / 60).astype(int)
-        df = df[df['time'] < time_window]
+        # Convert 'time' from seconds to 10-second intervals (1/6 of a minute) and filter based on time_window in minutes
+        df['time_interval'] = (df['time'] / 10).astype(int)
+        max_interval = time_window * 6  # Convert time_window from minutes to 10-second intervals
+        df = df[df['time_interval'] < max_interval]
 
-        # Initialize a DataFrame to store minute-wise statistics
-        minute_stats = pd.DataFrame()
+        # Initialize a DataFrame to store statistics for each 10-second window
+        interval_stats = pd.DataFrame()
 
-        for minute in range(time_window):
-            # Filter data for the current minute
-            minute_df = df[df['time'] == minute].drop(columns=['time'])
-            # Compute statistics for the current minute
-            stats = minute_df.describe().transpose().drop(columns=['count'])
+        for interval in range(max_interval):
+            # Filter data for the current 10-second interval
+            if interval not in df.time_interval.unique():
+                continue
+            interval_df = df[df['time_interval'] == interval].drop(columns=['time_interval'])
+            if interval_df.empty:
+                continue  # Skip this loop iteration if no data for the current interval
+            
+            # Compute statistics for the current interval
+            stats = interval_df.describe().transpose().drop(columns=['count'])
             stats = stats.stack().to_frame().T
 
-            # Add a column for the minute and ID
+            # Add a column for the interval and ID
             ids = extract_ids(filepath)  # Assuming extract_ids function exists
-            stats['minute'] = minute
+            stats['time_interval'] = interval
             stats['ID'] = ids
 
-            # Append the stats of the current minute
-            minute_stats = pd.concat([minute_stats, stats], axis=0)
+            # Append the stats of the current interval
+            interval_stats = pd.concat([interval_stats, stats], axis=0)
 
         # Concatenate the statistics of the current file to the final result
-        result_stat = pd.concat([result_stat, minute_stats], axis=0)
+        result_stat = pd.concat([result_stat, interval_stats], axis=0)
 
-    # Rename columns with the corresponding statistic and file index
-    new_columns = [f'{col}_{stat}' if col not in ['minute', 'ID'] else col for col, stat in result_stat.columns]
+    # Rename columns with the corresponding statistic and interval index
+    new_columns = [f'{col}_{stat}' if col not in ['time_interval', 'ID'] else col for col, stat in result_stat.columns]
     result_stat.columns = new_columns
 
     result_stat.reset_index(drop=True, inplace=True)
     return result_stat
-
 
 
 
@@ -71,9 +74,9 @@ def process_data(filepaths, time_window):
 @click.argument('output_filepath', type=click.Path())
 @click.argument('time_window', type=int)
 def main(input_filepath, output_filepath, time_window = 10):
-    """Runs data processing scripts to turn raw data into cleaned data."""
+    """Runs data processing scripts to extract features from raw data."""
     logger = logging.getLogger(__name__)
-    logger.info('Making final dataset from raw data')
+    logger.info('Making final statistical summary dataset from raw data')
 
     # Get all files related to the participants' data
     all_files = get_all_files(input_filepath)
